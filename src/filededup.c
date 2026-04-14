@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-
+#include <sys/stat.h>
 /* ------------------------------------------------------------------ */
 /* Tabulation hash parameters                                           */
 /* ------------------------------------------------------------------ */
@@ -78,12 +78,13 @@ static void tab_init(void)
 static uint64_t tab_hash_file(FILE *f) {
     uint64_t h = 0;
     int row = 0;
-    unsigned char buf[8192]; // Use a buffer
+    unsigned char buf[65536]; /* OPTIMIZATION 3: 64KB Buffer */
     size_t n;
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
         for (size_t i = 0; i < n; i++) {
             h ^= tab_table[row][buf[i]];
-            row = (row + 1) % TAB_ROWS;
+            /* OPTIMIZATION 2: Bitwise AND replaces slow division */
+            row = (row + 1) & 31; 
         }
     }
     return h;
@@ -368,14 +369,13 @@ int FDCheck(FILEDEDUP fd, char *filepath)
 {
     if (!fd || !filepath) return 0;
 
+    /* OPTIMIZATION 1: Get size instantly via OS metadata */
+    struct stat st;
+    if (stat(filepath, &st) != 0) return 0;
+    long size = st.st_size;
+
     FILE *f = fopen(filepath, "rb");
     if (!f) return 0;
-
-    /* Determine file size */
-    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return 0; }
-    long size = ftell(f);
-    if (size < 0)                    { fclose(f); return 0; }
-    fseek(f, 0, SEEK_SET);
 
     /* Compute tabulation hash */
     uint64_t h = tab_hash_file(f);
@@ -387,8 +387,9 @@ int FDCheck(FILEDEDUP fd, char *filepath)
 /* FDDump ------------------------------------------------------------ */
 char **FDDump(FILEDEDUP fd, int *length)
 {
+    if (!fd || !length) return NULL;
+    
     *length = 0;
-    if (!fd) return NULL;
 
     /* First pass: count total output slots needed across all buckets. */
     int total = 0;
