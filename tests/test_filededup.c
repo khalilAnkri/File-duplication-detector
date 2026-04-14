@@ -126,7 +126,7 @@ static void test_init_independent_instances(void)
 
 static void test_check_null_fd(void)
 {
-    int r = FDCheck(NULL, "/tmp/fd_dummy.txt");
+    int r = FDCheck(NULL, "./fd_dummy.txt");
     ASSERT(r == 0, "FDCheck with NULL fd should return 0");
     PASS();
 }
@@ -144,14 +144,14 @@ static void test_check_nonexistent_file(void)
 {
     FILEDEDUP fd = FDInit();
     ASSERT(fd != NULL, "FDInit failed");
-    int r = FDCheck(fd, "/tmp/fd_this_file_does_not_exist_xyz123.txt");
+    int r = FDCheck(fd, "./fd_this_file_does_not_exist_xyz123.txt");
     ASSERT(r == 0, "FDCheck with non-existent file should return 0");
     PASS();
 }
 
 static void test_check_existing_file(void)
 {
-    const char *path = "/tmp/fd_check_ok.txt";
+    const char *path = "./fd_check_ok.txt";
     write_file(path, "hello");
     FILEDEDUP fd = FDInit();
     ASSERT(fd != NULL, "FDInit failed");
@@ -176,7 +176,7 @@ static void test_dump_empty_detector(void)
 
 static void test_dump_single_unique_file(void)
 {
-    const char *p = "/tmp/fd_unique1.txt";
+    const char *p = "./fd_unique1.txt";
     write_file(p, "I am unique");
     FILEDEDUP fd = FDInit();
     FDCheck(fd, (char *)p);
@@ -192,8 +192,8 @@ static void test_dump_single_unique_file(void)
 static void test_dump_many_unique_files(void)
 {
     const char *paths[] = {
-        "/tmp/fd_u1.txt", "/tmp/fd_u2.txt", "/tmp/fd_u3.txt",
-        "/tmp/fd_u4.txt", "/tmp/fd_u5.txt"
+        "./fd_u1.txt", "./fd_u2.txt", "./fd_u3.txt",
+        "./fd_u4.txt", "./fd_u5.txt"
     };
     const char *contents[] = { "alpha", "beta", "gamma", "delta", "epsilon" };
     int n = 5;
@@ -215,8 +215,8 @@ static void test_dump_many_unique_files(void)
 
 static void test_dump_one_pair(void)
 {
-    const char *a = "/tmp/fd_dup_a.txt";
-    const char *b = "/tmp/fd_dup_b.txt";
+    const char *a = "./fd_dup_a.txt";
+    const char *b = "./fd_dup_b.txt";
     write_file(a, "duplicate content");
     write_file(b, "duplicate content");
 
@@ -244,8 +244,8 @@ static void test_dump_one_pair(void)
 
 static void test_dump_two_independent_pairs(void)
 {
-    const char *a1 = "/tmp/fd_g1a.txt", *a2 = "/tmp/fd_g1b.txt";
-    const char *b1 = "/tmp/fd_g2a.txt", *b2 = "/tmp/fd_g2b.txt";
+    const char *a1 = "./fd_g1a.txt", *a2 = "./fd_g1b.txt";
+    const char *b1 = "./fd_g2a.txt", *b2 = "./fd_g2b.txt";
     write_file(a1, "group one content");
     write_file(a2, "group one content");
     write_file(b1, "group two content!");
@@ -275,8 +275,8 @@ static void test_dump_two_independent_pairs(void)
 
 static void test_dump_mixed_unique_and_duplicates(void)
 {
-    const char *dup1 = "/tmp/fd_m1.txt", *dup2 = "/tmp/fd_m2.txt";
-    const char *uniq = "/tmp/fd_m3.txt";
+    const char *dup1 = "./fd_m1.txt", *dup2 = "./fd_m2.txt";
+    const char *uniq = "./fd_m3.txt";
     write_file(dup1, "shared");
     write_file(dup2, "shared");
     write_file(uniq, "lonely");
@@ -302,8 +302,8 @@ static void test_dump_mixed_unique_and_duplicates(void)
 
 static void test_same_size_different_content(void)
 {
-    const char *a = "/tmp/fd_ss1.txt";
-    const char *b = "/tmp/fd_ss2.txt";
+    const char *a = "./fd_ss1.txt";
+    const char *b = "./fd_ss2.txt";
     write_file(a, "AAAA");   /* 4 bytes */
     write_file(b, "BBBB");   /* 4 bytes, same size */
 
@@ -330,8 +330,8 @@ static void test_same_size_different_content(void)
 
 static void test_empty_files_are_duplicates(void)
 {
-    const char *a = "/tmp/fd_empty1.txt";
-    const char *b = "/tmp/fd_empty2.txt";
+    const char *a = "./fd_empty1.txt";
+    const char *b = "./fd_empty2.txt";
     write_empty(a);
     write_empty(b);
 
@@ -357,8 +357,8 @@ static void test_empty_files_are_duplicates(void)
 
 static void test_large_identical_files(void)
 {
-    const char *a = "/tmp/fd_large1.bin";
-    const char *b = "/tmp/fd_large2.bin";
+    const char *a = "./fd_large1.bin";
+    const char *b = "./fd_large2.bin";
     /* 1 MB of 0xAB bytes */
     write_bytes(a, 0xAB, 1024 * 1024);
     write_bytes(b, 0xAB, 1024 * 1024);
@@ -381,8 +381,8 @@ static void test_large_identical_files(void)
 
 static void test_large_different_files(void)
 {
-    const char *a = "/tmp/fd_ldiff1.bin";
-    const char *b = "/tmp/fd_ldiff2.bin";
+    const char *a = "./fd_ldiff1.bin";
+    const char *b = "./fd_ldiff2.bin";
     write_bytes(a, 0x11, 1024 * 1024);
     write_bytes(b, 0x22, 1024 * 1024);  /* same size, different content */
 
@@ -414,7 +414,7 @@ static void test_stress_all_unique(void)
     ASSERT(fd != NULL, "FDInit failed");
 
     for (int i = 0; i < STRESS_N; i++) {
-        snprintf(path,    sizeof(path),    "/tmp/fd_stress_u%d.txt", i);
+        snprintf(path,    sizeof(path),    "./fd_stress_u%d.txt", i);
         snprintf(content, sizeof(content), "unique file number %d !!!", i);
         write_file(path, content);
         FDCheck(fd, path);
@@ -426,7 +426,7 @@ static void test_stress_all_unique(void)
     free_dump(dump, len);
 
     for (int i = 0; i < STRESS_N; i++) {
-        snprintf(path, sizeof(path), "/tmp/fd_stress_u%d.txt", i);
+        snprintf(path, sizeof(path), "./fd_stress_u%d.txt", i);
         unlink(path);
     }
     PASS();
@@ -440,7 +440,7 @@ static void test_stress_all_duplicates(void)
     ASSERT(fd != NULL, "FDInit failed");
 
     for (int i = 0; i < STRESS_N; i++) {
-        snprintf(path, sizeof(path), "/tmp/fd_stress_d%d.txt", i);
+        snprintf(path, sizeof(path), "./fd_stress_d%d.txt", i);
         write_file(path, "same content for everyone");
         FDCheck(fd, path);
     }
@@ -455,7 +455,7 @@ static void test_stress_all_duplicates(void)
     free_dump(dump, len);
 
     for (int i = 0; i < STRESS_N; i++) {
-        snprintf(path, sizeof(path), "/tmp/fd_stress_d%d.txt", i);
+        snprintf(path, sizeof(path), "./fd_stress_d%d.txt", i);
         unlink(path);
     }
     PASS();
@@ -465,8 +465,8 @@ static void test_stress_all_duplicates(void)
 
 static void test_dump_idempotent(void)
 {
-    const char *a = "/tmp/fd_idem_a.txt";
-    const char *b = "/tmp/fd_idem_b.txt";
+    const char *a = "./fd_idem_a.txt";
+    const char *b = "./fd_idem_b.txt";
     write_file(a, "idempotent test");
     write_file(b, "idempotent test");
 

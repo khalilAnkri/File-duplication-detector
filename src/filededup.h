@@ -35,7 +35,7 @@ FILEDEDUP FDInit(void);
  *
  * Returns 1 on success, 0 on error.
  */
-int FDCheck(FILEDEDUP fd, char *filepath);
+int FDCheck(FILEDEDUP fd,  char *filepath);
 
 /**
  * FDDump – retrieve all groups of duplicate files.
@@ -56,5 +56,14 @@ int FDCheck(FILEDEDUP fd, char *filepath);
  * on allocation failure.
  */
 char **FDDump(FILEDEDUP fd, int *length);
+
+
+/**
+ * FDDestroy – release all resources held by the detector.
+ *
+ * Frees the hash table, all bucket structures, and all duplicated
+ * file paths. Safely handles a NULL fd pointer.
+ */
+void FDDestroy(FILEDEDUP fd);
 
 #endif /* FILEDEDUP_H */

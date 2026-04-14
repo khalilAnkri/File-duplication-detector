@@ -40,7 +40,7 @@
 /* ------------------------------------------------------------------ */
 
 #define TAB_ROWS 32
-#define TAB_COLS 256   /* one entry per possible byte value */
+#define TAB_COLS 256   /* one entry per possible byte value since the byte is [0 ; 255] */
 
 /* Precomputed tabulation table – filled once by tab_init(). */
 static uint64_t tab_table[TAB_ROWS][TAB_COLS];
@@ -75,15 +75,16 @@ static void tab_init(void)
  * contribution from the table.  Row is advanced modulo TAB_ROWS after
  * every byte.
  */
-static uint64_t tab_hash_file(FILE *f)
-{
-    uint64_t h   = 0;
-    int      row = 0;
-    int      byte;
-
-    while ((byte = fgetc(f)) != EOF) {
-        h ^= tab_table[row][byte];
-        row = (row + 1) % TAB_ROWS;
+static uint64_t tab_hash_file(FILE *f) {
+    uint64_t h = 0;
+    int row = 0;
+    unsigned char buf[8192]; // Use a buffer
+    size_t n;
+    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+        for (size_t i = 0; i < n; i++) {
+            h ^= tab_table[row][buf[i]];
+            row = (row + 1) % TAB_ROWS;
+        }
     }
     return h;
 }
@@ -185,36 +186,37 @@ static int ht_grow(HashTable *ht)
  * ht_insert – find or create the bucket for (file_size, hash) and
  * append `path` to it.  Rehashes if the load factor is exceeded.
  */
-static int ht_insert(HashTable *ht, long file_size, uint64_t hash,
-                     const char *path)
+static int ht_insert(HashTable *ht, long file_size, uint64_t hash, const char *path)
 {
-    /* Rehash before inserting to keep load ≤ HT_MAX_LOAD */
+    /* Load factor check */
     if ((double)(ht->used + 1) > HT_MAX_LOAD * (double)ht->cap)
         if (!ht_grow(ht)) return 0;
 
     int idx = ht_slot(file_size, hash, ht->cap);
-    /* Linear probing */
     while (ht->slots[idx].file_size != -1) {
         Bucket *b = &ht->slots[idx];
         if (b->file_size == file_size && b->hash == hash) {
-            /* Existing bucket – just append the path */
-            return bucket_push(b, path);
+            /* If bucket_push fails (OOM), return 0 (Failure) */
+            if (!bucket_push(b, path)) return 0;
+            return 1; /* Success: File added to existing bucket */
         }
         idx = (idx + 1) & (ht->cap - 1);
     }
 
-    /* Empty slot: create a new bucket */
-    Bucket *b  = &ht->slots[idx];
+    /* Empty slot found: create a new bucket */
+    Bucket *b = &ht->slots[idx];
     b->file_size = file_size;
-    b->hash      = hash;
-    b->cap       = BUCKET_INIT_CAP;
-    b->count     = 0;
-    b->paths     = malloc((size_t)BUCKET_INIT_CAP * sizeof(char *));
+    b->hash = hash;
+    b->cap = BUCKET_INIT_CAP;
+    b->count = 0;
+    b->paths = malloc((size_t)BUCKET_INIT_CAP * sizeof(char *));
     if (!b->paths) return 0;
-    ht->used++;
-    return bucket_push(b, path);
-}
 
+    ht->used++;
+    if (!bucket_push(b, path)) return 0;
+    
+    return 1; /* Success: File added to new bucket */
+}
 /* ------------------------------------------------------------------ */
 /* Exact byte-by-byte file comparison                                   */
 /* ------------------------------------------------------------------ */
@@ -373,7 +375,7 @@ int FDCheck(FILEDEDUP fd, char *filepath)
     if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return 0; }
     long size = ftell(f);
     if (size < 0)                    { fclose(f); return 0; }
-    rewind(f);
+    fseek(f, 0, SEEK_SET);
 
     /* Compute tabulation hash */
     uint64_t h = tab_hash_file(f);
