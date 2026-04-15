@@ -78,13 +78,13 @@ static void tab_init(void)
 static uint64_t tab_hash_file(FILE *f) {
     uint64_t h = 0;
     int row = 0;
-    unsigned char buf[65536]; /* OPTIMIZATION 3: 64KB Buffer */
+    unsigned char buf[65536]; 
     size_t n;
+    
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
         for (size_t i = 0; i < n; i++) {
             h ^= tab_table[row][buf[i]];
-            /* OPTIMIZATION 2: Bitwise AND replaces slow division */
-            row = (row + 1) & 31; 
+            row = (row + 1) & 31; /* Safe bitwise rotation */
         }
     }
     return h;
@@ -124,7 +124,7 @@ static int bucket_push(Bucket *b, const char *path)
 /* Hash table of buckets                                                */
 /* ------------------------------------------------------------------ */
 
-#define HT_INIT_CAP  64     /* must be a power of two */
+#define HT_INIT_CAP  8192     /* must be a power of two */
 #define HT_MAX_LOAD  0.5    /* rehash when load exceeds this fraction  */
 
 typedef struct {
