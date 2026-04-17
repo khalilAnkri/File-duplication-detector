@@ -80,12 +80,16 @@ static uint64_t tab_hash_file(FILE *f) {
     int row = 0;
     unsigned char buf[65536]; 
     size_t n;
+    size_t bytes_hashed = 0; // Track progress
     
-    while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+    // Only hash the first 1MB. 
+    // files_equal() will still catch any differences later!
+    while (bytes_hashed < 1048576 && (n = fread(buf, 1, sizeof(buf), f)) > 0) {
         for (size_t i = 0; i < n; i++) {
             h ^= tab_table[row][buf[i]];
-            row = (row + 1) & 31; /* Safe bitwise rotation */
+            row = (row + 1) & 31;
         }
+        bytes_hashed += n;
     }
     return h;
 }
@@ -222,7 +226,7 @@ static int ht_insert(HashTable *ht, long file_size, uint64_t hash, const char *p
 /* Exact byte-by-byte file comparison                                   */
 /* ------------------------------------------------------------------ */
 
-#define CMP_BUF_SIZE 65536   /* 64 KiB read buffer */
+#define CMP_BUF_SIZE 131072   
 
 /**
  * files_equal – return 1 iff the two files at the given paths are
@@ -369,7 +373,7 @@ int FDCheck(FILEDEDUP fd, char *filepath)
 {
     if (!fd || !filepath) return 0;
 
-    /* OPTIMIZATION 1: Get size instantly via OS metadata */
+    /* OPTIMIZATION 1: Get size instantly via OS metadata (STILL SAFE) */
     struct stat st;
     if (stat(filepath, &st) != 0) return 0;
     long size = st.st_size;
@@ -377,7 +381,8 @@ int FDCheck(FILEDEDUP fd, char *filepath)
     FILE *f = fopen(filepath, "rb");
     if (!f) return 0;
 
-    /* Compute tabulation hash */
+    /* Removed dangerous setvbuf here */
+
     uint64_t h = tab_hash_file(f);
     fclose(f);
 
